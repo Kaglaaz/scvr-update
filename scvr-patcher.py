@@ -90,12 +90,21 @@ def update_attributes(directory, width, height, fov):
 
 
 def update_data():
-    drive_letter = drive_var.get()
-    selected_headset = headset_var.get()
+    # Search for Star Citizen installation directory on all available drives
+    star_citizen_dir = None
+    for drive in string.ascii_uppercase:
+        potential_dir = os.path.join(drive + ":", 'Program Files', 'Roberts Space Industries', 'StarCitizen')
+        if os.path.exists(potential_dir):
+            star_citizen_dir = potential_dir
+            break
+
+    if star_citizen_dir is None:
+        messagebox.showerror("Error", "Star Citizen installation directory not found.")
+        return
+
+    # Extract width and height from the selected resolution
     selected_resolution = resolution_var.get()
     width, height = map(int, re.findall(r'(\d+) X (\d+)', selected_resolution)[0])
-
-    base_directory = os.path.join(drive_letter, 'Program Files', 'Roberts Space Industries', 'StarCitizen')
 
     # Update settings in specified directories
     directories = ['PTU', 'LIVE', 'EPTU', 'TECH-PREVIEW', 'HOTFIX']
@@ -109,8 +118,11 @@ def update_data():
 
     result_settings = []
     for directory in directories:
-        full_directory = os.path.join(base_directory, directory, 'EasyAntiCheat')
-        result_settings.append(update_settings(full_directory, new_values))
+        full_directory = os.path.join(star_citizen_dir, directory, 'EasyAntiCheat')
+        if os.path.exists(full_directory):
+            result_settings.append(update_settings(full_directory, new_values))
+        else:
+            result_settings.append(f"Directory not found: {full_directory}")
 
     result_settings_message = '\n'.join(result for result in result_settings if not result.startswith("Directory not found"))
 
@@ -119,33 +131,43 @@ def update_data():
     result_attributes = []
 
     for subdirectory in attributes_subdirectories:
-        full_attributes_directory = os.path.join(base_directory, subdirectory, 'USER', 'Client', '0', 'Profiles', 'default')
-        result_attributes.append(update_attributes(full_attributes_directory, width, height, fov_var.get()))
+        full_attributes_directory = os.path.join(star_citizen_dir, subdirectory, 'USER', 'Client', '0', 'Profiles', 'default')
+        if os.path.exists(full_attributes_directory):
+            result_attributes.append(update_attributes(full_attributes_directory, width, height, fov_var.get()))
+        else:
+            result_attributes.append(f"Directory not found: {full_attributes_directory}")
 
     result_attributes_message = '\n'.join(result for result in result_attributes if not result.startswith("Directory not found"))
 
     # Check and update hosts file
     hosts_updated = is_hosts_updated()
 
-    # Display result in a single message box
-    result_message = f"{result_settings_message}\n\n{result_attributes_message}"
+    result_message = "Settings updated successfully in the following directories:\n\n"
+    updated = False
+
+    for directory, result in zip(directories, result_settings):
+        if result and not result.startswith("Directory not found"):
+            result_message += f"{os.path.join(star_citizen_dir, directory)}\n"
+            updated = True
 
     if hosts_updated:
         result_message += "\nHosts file updated successfully."
+        updated = True
     elif hosts_updated is False:
         result_message += "\nHosts file is already up to date."
 
-    if result_message:
+    if updated:
         result_message += "\nClose the program now."
     else:
         result_message = "Failed to update settings. Check the paths and try again."
 
     messagebox.showinfo("Update Result", result_message)
 
-    # Create a Close Program button
-    close_button = tk.Button(root, text="Close Program", command=root.destroy, font=("Arial", 12))
-    close_button.pack(pady=10)
-
+    if updated:
+        # Create a Close Program button
+        close_button = tk.Button(root, text="Close Program", command=root.destroy, font=("Arial", 12))
+        close_button.pack(pady=10)
+        
 # GUI setup
 root = tk.Tk()
 root.title("VRCitizen Settings Updater")
@@ -169,21 +191,12 @@ label_text.pack(padx=10, pady=10, anchor="n")
 import string
 drives = [f"{letter}:" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
 
-# Label for drive selection
-drive_label = tk.Label(root, text="Select the drive in dropdown below, where Star Citizen is installed.", anchor="c", font=("Arial", 12))
-drive_label.pack(padx=10, pady=10, anchor="c")
-
-# Dropdown for drive selection
-drive_var = tk.StringVar()
-drive_dropdown = tk.OptionMenu(root, drive_var, *drives)
-drive_dropdown.pack(padx=10, pady=10, anchor="c")
-
 # Load headset data from the JSON file
-with open('configs.json', 'r') as json_file:
+with open('Headset_Configurations_v4.json', 'r') as json_file:
     headset_data = json.load(json_file)
 
 # Set default headset
-default_headset = "HP Reverb G2"
+default_headset = "Select VR Headset"
 
 # Label for headset selection
 headset_label = tk.Label(root, text="Select VR Headset in the dropdown below \n(for PIMAX also choose lenses installed):", anchor="c", font=("Arial", 12))
