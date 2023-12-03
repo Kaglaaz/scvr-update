@@ -192,7 +192,7 @@ import string
 drives = [f"{letter}:" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
 
 # Load headset data from the JSON file
-with open('Headset_Configurations_v4.json', 'r') as json_file:
+with open('configs.json', 'r') as json_file:
     headset_data = json.load(json_file)
 
 # Set default headset
